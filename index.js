@@ -53,7 +53,7 @@ async function run() {
       res.send(result)
 
     })
-
+    
     app.post('/applications',async(req,res)=>{
       const application=req.body
       console.log(application);
@@ -64,13 +64,21 @@ async function run() {
 
     app.get('/applications',async(req,res)=>{
       const email=req.query.email
-      const query={
+      const query={  
         applicant:email
       }
       const result=await applicationsCollection.find(query).toArray()
+
+      for (const application of result){
+        const jobId=application.jobId
+        const jobQuery={_id: new ObjectId(jobId)}
+        const job = await jobsCollection.findOne(jobQuery)
+        application.company=job.company
+        application.company_logo=job.company_logo
+      }
       res.send(result)
     })
-    // Send a ping to confirm a successful c=onnection
+    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
