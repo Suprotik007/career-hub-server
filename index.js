@@ -53,7 +53,13 @@ async function run() {
       res.send(result)
 
     })
-    
+    app.post('/jobs',async(req,res)=>{
+      const newJob=req.body
+      console.log(newJob)
+      const result=await jobsCollection.insertOne(newJob)
+      res.send(result)
+      
+    })
     app.post('/applications',async(req,res)=>{
       const application=req.body
       console.log(application);
