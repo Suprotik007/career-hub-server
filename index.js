@@ -2,11 +2,42 @@ const express =require('express')
 const cors=require('cors')
 require('dotenv').config()
 const app =express()
+const jwt=require('jsonwebtoken')
+const cookieParser =require('cookie-parser')
 const port=process.env.PORT ||3000
 // const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
-app.use(cors())
+app.use(cors({
+  origin:['http://localhost:5173'],
+  credentials:true
+
+
+}))
 app.use(express.json())
+app.use(cookieParser())
+const logger=(req,res,next)=>{
+  console.log('inside logger');
+  next()
+  
+}
+const verifyToken=(req,res,next)=>{
+  const token=req?.cookies?.token
+  console.log('cookies in the md',token);
+  if(!token){
+    return res.status(401).send({message:'unauth access'})
+  }
+
+  jwt.verify(token,process.env.DB_SECRET,(err,decoded)=>{
+    if(err){
+   return res.status(401).send({message:'unauth access'})
+    }
+    req.decoded=decoded
+    console.log(decoded);
+    next()
+  })
+  next()
+  
+}
 
 app.get('/',(req,res)=>{
     res.send('career cooking')
@@ -40,6 +71,21 @@ async function run() {
     const jobsCollection=client.db('career-code').collection('job-collection')
     const applicationsCollection=client.db('career-code').collection('application-collection')
 
+    // jwt
+
+     app.post('/jwt',async(req,res)=>{
+     const {email}=req.body
+     const user={email}
+     const token=jwt.sign(user,process.env.DB_SECRET,{expiresIn:'1h'})
+     res.cookie('token',token,{
+      httpOnly:true,
+      secure:false
+     })
+     res.send({success:true})
+      
+    })
+
+
     app.get('/jobs',async(req,res)=>{
         const cursor=jobsCollection.find()
         const result=await cursor.toArray()
@@ -61,7 +107,7 @@ async function run() {
       
     })
 
-    app.get('applications/job/:job_id',async(req,res)=>{
+    app.get('/applications/job/:job_id',async(req,res)=>{
       const job_id=req.params.job_id
       const query={jobId:job_id}
       const result=await applicationsCollection.find(query).toArray()
@@ -75,8 +121,10 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/applications',async(req,res)=>{
+    app.get('/applications',logger,async(req,res)=>{
       const email=req.query.email
+      console.log('inside',req.cookies);
+      
       const query={  
         applicant:email
       }
